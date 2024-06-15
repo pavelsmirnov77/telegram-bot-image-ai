@@ -26,6 +26,23 @@ def translate_to_english(text):
         translated_text = text
     return translated_text
 
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = InlineKeyboardMarkup()
+    generate_button = InlineKeyboardButton("Генерация изображения", callback_data="generate_image")
+    author_button = InlineKeyboardButton("Об авторе", callback_data="author_info")
+    markup.row(generate_button)
+    markup.row(author_button)
+    bot.reply_to(message, "Привет! Выберите действие из меню:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    if call.data == "generate_image":
+        bot.send_message(call.message.chat.id, "Отправьте мне описание и я нарисую по нему изображение.")
+    elif call.data == "author_info":
+        github_link = "https://github.com/pavelsmirnov77/telegram-bot-image-ai"
+        bot.send_message(call.message.chat.id, f"Автор: Смирнов Павел\nGitHub: {github_link}")
+
 def query(payload):
     headers = {"Authorization": f"Bearer {API_TOKEN}"}
     response = requests.post(API_URL, headers=headers, json=payload)
@@ -34,10 +51,6 @@ def query(payload):
         print(error_message)
         return None, error_message
     return response.content, None
-
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "Привет! Отправьте мне текст, и я сгенерирую изображение.")
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
