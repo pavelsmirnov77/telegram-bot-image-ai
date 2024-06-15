@@ -5,6 +5,7 @@ import telebot
 import os
 from dotenv import load_dotenv
 from googletrans import Translator
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 load_dotenv()
 
@@ -14,6 +15,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 translator = Translator()
+
+saved_images = {}
 
 def translate_to_english(text):
     language = translator.detect(text).lang
@@ -39,23 +42,48 @@ def send_welcome(message):
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_input = message.text
+    user_name = message.from_user.username
+    user_id = message.chat.id
+
+    print(f"Пользователь: {user_name}, Запрос: {user_input}")
     translated_input = translate_to_english(user_input)
-    bot.reply_to(message, f"Генерация изображения для запроса: {translated_input}")
-    
+    bot.reply_to(message, f"Генерация изображения...")
+
     image_bytes, error_message = query({"inputs": translated_input})
-    
+
     if image_bytes:
         try:
             image = Image.open(io.BytesIO(image_bytes))
             bio = io.BytesIO()
-            bio.name = 'image.png'
+            bio.name = f"{user_input}.png"
             image.save(bio, 'PNG')
             bio.seek(0)
-            bot.send_photo(message.chat.id, photo=bio)
+
+            saved_images[user_id] = bio.getvalue()
+
+            markup = InlineKeyboardMarkup()
+            save_button = InlineKeyboardButton("Сохранить 🖼️", callback_data="save_image")
+            markup.add(save_button)
+
+            bot.send_photo(message.chat.id, photo=bio, reply_markup=markup)
         except Exception as e:
             bot.reply_to(message, f"Ошибка при открытии изображения: {e}")
     else:
         bot.reply_to(message, f"Не удалось получить изображение. {error_message}")
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    user_id = call.message.chat.id
+
+    if call.data == "save_image":
+        if user_id in saved_images:
+            image_data = saved_images[user_id]
+            bio = io.BytesIO(image_data)
+            bio.name = "image.png"
+            bot.send_document(user_id, bio)
+            bot.answer_callback_query(call.id, "Изображение сохранено!")
+        else:
+            bot.answer_callback_query(call.id, "Изображение не найдено для сохранения.")
 
 if __name__ == "__main__":
     bot.polling()
