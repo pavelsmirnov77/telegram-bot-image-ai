@@ -12,7 +12,6 @@ load_dotenv()
 
 API_URL = os.getenv("API_URL")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TOKEN_ID = "666c7b7ffa4fb388b4fd9726"
 ROTATE_TOKEN_URL = os.getenv("ROTATE_TOKEN_URL")
 COOKIE = os.getenv("COOKIE")
 
